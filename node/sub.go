@@ -23,7 +23,13 @@ type ClashConfig struct {
 
 func LoadClashConfigFromURL(schedulerID int, rawURL, subName string) (int, error) {
 	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Get(rawURL)
+	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
+	if err != nil {
+		return 0, fmt.Errorf("create Clash subscription request: %w", err)
+	}
+	req.Header.Set("User-Agent", "clash.meta")
+	req.Header.Set("Accept", "text/yaml, text/plain;q=0.9, */*;q=0.1")
+	resp, err := client.Do(req)
 	if err != nil {
 		return 0, fmt.Errorf("fetch Clash subscription: %w", err)
 	}

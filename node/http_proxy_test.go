@@ -2,10 +2,11 @@ package node
 
 import (
 	"fmt"
-	"testing"
-
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
+	"net/http"
+	"net/http/httptest"
+	"testing"
 
 	"sublink/models"
 )
@@ -74,5 +75,47 @@ func TestScheduleClashToNodeLinksImportsHTTPAndSkipsUnsupported(t *testing.T) {
 	}
 	if linkCount != 1 {
 		t.Fatalf("target subscription links = %d, want 1", linkCount)
+	}
+}
+
+func TestLoadClashConfigFromURLRequestsClashContent(t *testing.T) {
+	dsn := fmt.Sprintf("file:%s?mode=memory&cache=shared", t.Name())
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.AutoMigrate(&models.SubScheduler{}, &models.SubSchedulerTarget{}, &models.Subcription{}, &models.Node{}, &models.SubcriptionNode{}, &models.SubLogs{}); err != nil {
+		t.Fatal(err)
+	}
+	previous := models.DB
+	models.DB = db
+	t.Cleanup(func() { models.DB = previous })
+
+	target := models.Subcription{Name: "master"}
+	if err := db.Create(&target).Error; err != nil {
+		t.Fatal(err)
+	}
+	scheduler := models.SubScheduler{Name: "Feed", URL: "https://example.test/sub", CronExpr: "0 * * * *"}
+	if err := scheduler.AddWithTargets([]int{target.ID}); err != nil {
+		t.Fatal(err)
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("User-Agent"); got != "clash.meta" {
+			t.Errorf("User-Agent = %q, want clash.meta", got)
+		}
+		if got := r.Header.Get("Accept"); got != "text/yaml, text/plain;q=0.9, */*;q=0.1" {
+			t.Errorf("Accept = %q", got)
+		}
+		_, _ = w.Write([]byte("proxies:\n  - name: edge\n    type: ss\n    server: 192.0.2.1\n    port: 443\n    cipher: aes-128-gcm\n    password: secret\n"))
+	}))
+	defer server.Close()
+
+	count, err := LoadClashConfigFromURL(scheduler.ID, server.URL, scheduler.Name)
+	if err != nil {
+		t.Fatalf("load subscription: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("count = %d, want 1", count)
 	}
 }
