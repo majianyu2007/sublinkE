@@ -62,6 +62,9 @@ proxy-groups:
         - 🇺🇸 美国节点
         - 🇰🇷 韩国节点
         - 🇪🇺 欧洲节点
+        - 🇨🇦 加拿大节点
+        - 🇷🇴 罗马尼亚节点
+        - 🌍 西欧节点
         - 🌏 其他地区
         - 🌐 全部节点
         - DIRECT
@@ -146,13 +149,40 @@ proxy-groups:
       filter: "(?i)(欧洲|歐洲|🇪🇺|(^|[_ -])(RO|DE|NL|GB|UK|FI|UA|SE|CZ|LT|TR|RU|FR|PL|EE|IT)([_ -]|$)|Romania|Germany|Netherlands|Britain|Finland|Ukraine|Sweden|Czech|Lithuania|Turkey|Russia|France|Poland|Estonia|Italy)"
       empty-fallback: REJECT
       proxies: []
+    - name: 🇨🇦 加拿大节点
+      type: url-test
+      url: https://www.gstatic.com/generate_204
+      interval: 300
+      tolerance: 50
+      include-all-proxies: true
+      filter: "(?i)(加拿大|🇨🇦|(^|[_ -])CA([_ -]|$)|Canada|Toronto|Vancouver|Montreal)"
+      empty-fallback: REJECT
+      proxies: []
+    - name: 🇷🇴 罗马尼亚节点
+      type: url-test
+      url: https://www.gstatic.com/generate_204
+      interval: 300
+      tolerance: 50
+      include-all-proxies: true
+      filter: "(?i)(罗马尼亚|羅馬尼亞|🇷🇴|(^|[_ -])RO([_ -]|$)|Romania|Bucharest)"
+      empty-fallback: REJECT
+      proxies: []
+    - name: 🌍 西欧节点
+      type: url-test
+      url: https://www.gstatic.com/generate_204
+      interval: 300
+      tolerance: 50
+      include-all-proxies: true
+      filter: "(?i)(法国|法國|德国|德國|荷兰|荷蘭|英国|英國|芬兰|芬蘭|瑞典|意大利|🇫🇷|🇩🇪|🇳🇱|🇬🇧|🇫🇮|🇸🇪|🇮🇹|(^|[_ -])(FR|DE|NL|GB|UK|FI|SE|IT)([_ -]|$)|France|Germany|Netherlands|Britain|United[ _-]?Kingdom|Finland|Sweden|Italy)"
+      empty-fallback: REJECT
+      proxies: []
     - name: 🌏 其他地区
       type: url-test
       url: https://www.gstatic.com/generate_204
       interval: 300
       tolerance: 50
       include-all-proxies: true
-      exclude-filter: "(?i)(香港|港|台湾|台灣|日本|新加坡|狮城|獅城|美国|美國|韩国|韓國|欧洲|歐洲|(^|[_ -])(HK|TW|JP|SG|US|USA|KR|RO|DE|NL|GB|UK|FI|UA|SE|CZ|LT|TR|RU|FR|PL|EE|IT)([_ -]|$)|Hong[ _-]?Kong|Taiwan|Taipei|Japan|Tokyo|Osaka|Singapore|United[ _-]?States|Los[ _-]?Angeles|New[ _-]?York|Korea|Seoul|Romania|Germany|Netherlands|Britain|Finland|Ukraine|Sweden|Czech|Lithuania|Turkey|Russia|France|Poland|Estonia|Italy)"
+      exclude-filter: "(?i)(香港|港|台湾|台灣|日本|新加坡|狮城|獅城|美国|美國|韩国|韓國|欧洲|歐洲|加拿大|(^|[_ -])(HK|TW|JP|SG|US|USA|KR|RO|DE|NL|GB|UK|FI|UA|SE|CZ|LT|TR|RU|FR|PL|EE|IT|CA)([_ -]|$)|Hong[ _-]?Kong|Taiwan|Taipei|Japan|Tokyo|Osaka|Singapore|United[ _-]?States|Los[ _-]?Angeles|New[ _-]?York|Korea|Seoul|Romania|Germany|Netherlands|Britain|Finland|Ukraine|Sweden|Czech|Lithuania|Turkey|Russia|France|Poland|Estonia|Italy|Canada|Toronto|Vancouver|Montreal)"
       empty-fallback: REJECT
       proxies: []
     - name: 🌐 全部节点
@@ -174,6 +204,9 @@ proxy-groups:
         - 🇺🇸 美国节点
         - 🇰🇷 韩国节点
         - 🇪🇺 欧洲节点
+        - 🇨🇦 加拿大节点
+        - 🇷🇴 罗马尼亚节点
+        - 🌍 西欧节点
         - 🌏 其他地区
         - 🌐 全部节点
         - DIRECT
@@ -192,6 +225,9 @@ proxy-groups:
         - 🇺🇸 美国节点
         - 🇰🇷 韩国节点
         - 🇪🇺 欧洲节点
+        - 🇨🇦 加拿大节点
+        - 🇷🇴 罗马尼亚节点
+        - 🌍 西欧节点
         - 🌏 其他地区
         - 🌐 全部节点
         - DIRECT
@@ -210,6 +246,9 @@ proxy-groups:
         - 🇺🇸 美国节点
         - 🇰🇷 韩国节点
         - 🇪🇺 欧洲节点
+        - 🇨🇦 加拿大节点
+        - 🇷🇴 罗马尼亚节点
+        - 🌍 西欧节点
         - 🌏 其他地区
         - 🌐 全部节点
         - DIRECT
@@ -228,6 +267,9 @@ proxy-groups:
         - 🇺🇸 美国节点
         - 🇰🇷 韩国节点
         - 🇪🇺 欧洲节点
+        - 🇨🇦 加拿大节点
+        - 🇷🇴 罗马尼亚节点
+        - 🌍 西欧节点
         - 🌏 其他地区
         - 🌐 全部节点
         - DIRECT
@@ -246,6 +288,9 @@ proxy-groups:
         - 🇺🇸 美国节点
         - 🇰🇷 韩国节点
         - 🇪🇺 欧洲节点
+        - 🇨🇦 加拿大节点
+        - 🇷🇴 罗马尼亚节点
+        - 🌍 西欧节点
         - 🌏 其他地区
         - 🌐 全部节点
         - DIRECT
@@ -264,6 +309,9 @@ proxy-groups:
         - 🇺🇸 美国节点
         - 🇰🇷 韩国节点
         - 🇪🇺 欧洲节点
+        - 🇨🇦 加拿大节点
+        - 🇷🇴 罗马尼亚节点
+        - 🌍 西欧节点
         - 🌏 其他地区
         - 🌐 全部节点
         - DIRECT
@@ -282,6 +330,9 @@ proxy-groups:
         - 🇺🇸 美国节点
         - 🇰🇷 韩国节点
         - 🇪🇺 欧洲节点
+        - 🇨🇦 加拿大节点
+        - 🇷🇴 罗马尼亚节点
+        - 🌍 西欧节点
         - 🌏 其他地区
         - 🌐 全部节点
         - DIRECT
@@ -300,6 +351,9 @@ proxy-groups:
         - 🇺🇸 美国节点
         - 🇰🇷 韩国节点
         - 🇪🇺 欧洲节点
+        - 🇨🇦 加拿大节点
+        - 🇷🇴 罗马尼亚节点
+        - 🌍 西欧节点
         - 🌏 其他地区
         - 🌐 全部节点
         - DIRECT
@@ -318,6 +372,9 @@ proxy-groups:
         - 🇺🇸 美国节点
         - 🇰🇷 韩国节点
         - 🇪🇺 欧洲节点
+        - 🇨🇦 加拿大节点
+        - 🇷🇴 罗马尼亚节点
+        - 🌍 西欧节点
         - 🌏 其他地区
         - 🌐 全部节点
         - DIRECT
@@ -336,6 +393,9 @@ proxy-groups:
         - 🇺🇸 美国节点
         - 🇰🇷 韩国节点
         - 🇪🇺 欧洲节点
+        - 🇨🇦 加拿大节点
+        - 🇷🇴 罗马尼亚节点
+        - 🌍 西欧节点
         - 🌏 其他地区
         - 🌐 全部节点
         - DIRECT
@@ -355,6 +415,9 @@ proxy-groups:
         - 🇺🇸 美国节点
         - 🇰🇷 韩国节点
         - 🇪🇺 欧洲节点
+        - 🇨🇦 加拿大节点
+        - 🇷🇴 罗马尼亚节点
+        - 🌍 西欧节点
         - 🌏 其他地区
         - 🌐 全部节点
     - name: Apple
@@ -373,6 +436,9 @@ proxy-groups:
         - 🇺🇸 美国节点
         - 🇰🇷 韩国节点
         - 🇪🇺 欧洲节点
+        - 🇨🇦 加拿大节点
+        - 🇷🇴 罗马尼亚节点
+        - 🌍 西欧节点
         - 🌏 其他地区
         - 🌐 全部节点
     - name: Vodafone-UK-WiFi
@@ -384,6 +450,9 @@ proxy-groups:
         - ⚡ 自建自动优选
         - AUTO
         - 🇪🇺 欧洲节点
+        - 🇨🇦 加拿大节点
+        - 🇷🇴 罗马尼亚节点
+        - 🌍 西欧节点
         - 🌐 全部节点
         - DIRECT
     - name: Games
@@ -434,6 +503,9 @@ proxy-groups:
         - 🇺🇸 美国节点
         - 🇰🇷 韩国节点
         - 🇪🇺 欧洲节点
+        - 🇨🇦 加拿大节点
+        - 🇷🇴 罗马尼亚节点
+        - 🌍 西欧节点
         - 🌏 其他地区
         - 🌐 全部节点
         - DIRECT

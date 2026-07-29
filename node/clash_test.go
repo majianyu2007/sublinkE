@@ -69,13 +69,16 @@ func TestDefaultClashTemplateRegionalFilters(t *testing.T) {
 	}
 
 	samples := map[string]string{
-		"🇭🇰 香港节点":  "Purens_HK-Mong Kok-1",
-		"🚩 台湾节点":   "Purens_TW-Taipei-1",
-		"🇯🇵 日本节点":  "Purens_JP-Tokyo-1",
-		"🇸🇬 新加坡节点": "Purens_SG-Singapore-1",
-		"🇺🇸 美国节点":  "Purens_US-Los Angeles-1",
-		"🇰🇷 韩国节点":  "Purens_KR-Seoul-1",
-		"🇪🇺 欧洲节点":  "Purens_RO-Bucharest-1",
+		"🇭🇰 香港节点":   "Purens_HK-Mong Kok-1",
+		"🚩 台湾节点":    "Purens_TW-Taipei-1",
+		"🇯🇵 日本节点":   "Purens_JP-Tokyo-1",
+		"🇸🇬 新加坡节点":  "Purens_SG-Singapore-1",
+		"🇺🇸 美国节点":   "Purens_US-Los Angeles-1",
+		"🇰🇷 韩国节点":   "Purens_KR-Seoul-1",
+		"🇪🇺 欧洲节点":   "Purens_RO-Bucharest-1",
+		"🇨🇦 加拿大节点":  "onimaii_精选_🇨🇦加拿大 原生IP",
+		"🇷🇴 罗马尼亚节点": "onimaii_精选_RO-Bucharest-1",
+		"🌍 西欧节点":    "onimaii_精选_DE-Frankfurt-1",
 	}
 	found := make(map[string]bool, len(samples))
 	for _, group := range config.ProxyGroups {
