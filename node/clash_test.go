@@ -87,6 +87,9 @@ func TestDefaultClashTemplateRegionalFilters(t *testing.T) {
 		if !expected {
 			continue
 		}
+		if group["type"] != "url-test" {
+			t.Errorf("%s type = %v, want url-test for automatic selection", name, group["type"])
+		}
 		filter, _ := group["filter"].(string)
 		matcher, err := regexp.Compile(filter)
 		if err != nil {
@@ -133,13 +136,20 @@ func TestDefaultClashTemplatePreservesCustomPolicies(t *testing.T) {
 			t.Errorf("missing custom policy group %q", name)
 		}
 	}
-	customFilter, _ := groups["⭐ 自建优质节点"]["exclude-filter"].(string)
-	matcher, err := regexp.Compile(customFilter)
-	if err != nil {
-		t.Fatalf("invalid self-hosted exclusion filter %q: %v", customFilter, err)
+	for _, name := range []string{"⭐ 自建优质节点", "⚡ 自建自动优选"} {
+		selfFilter, _ := groups[name]["filter"].(string)
+		matcher, err := regexp.Compile(selfFilter)
+		if err != nil {
+			t.Fatalf("%s has invalid self-hosted filter %q: %v", name, selfFilter, err)
+		}
+		if !matcher.MatchString("Self_HostDzire-Reality") ||
+			matcher.MatchString("Purens_US-Los Angeles-1") ||
+			matcher.MatchString("onimaii_精选_US-Los Angeles-1") {
+			t.Errorf("%s filter does not isolate Self_ nodes: %q", name, selfFilter)
+		}
 	}
-	if matcher.MatchString("HostDzire-Reality") || !matcher.MatchString("Purens_US-Los Angeles-1") {
-		t.Errorf("self-hosted exclusion filter does not separate mirror nodes: %q", customFilter)
+	if lazy, _ := groups["⚡ 自建自动优选"]["lazy"].(bool); !lazy {
+		t.Error("self-hosted automatic group must remain lazy")
 	}
 	if len(config.RuleProviders) < 20 {
 		t.Errorf("custom rule providers = %d, want at least 20", len(config.RuleProviders))

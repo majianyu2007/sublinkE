@@ -32,7 +32,7 @@ proxy-groups:
     - name: ⭐ 自建优质节点
       type: select
       include-all-proxies: true
-      exclude-filter: "(?i)^Purens_"
+      filter: "(?i)^Self_"
       empty-fallback: REJECT
       proxies: []
     - name: ⚡ 自建自动优选
@@ -44,7 +44,7 @@ proxy-groups:
       tolerance: 80
       max-failed-times: 3
       include-all-proxies: true
-      exclude-filter: "(?i)^Purens_"
+      filter: "(?i)^Self_"
       empty-fallback: REJECT
       proxies: []
     - name: PROXY
