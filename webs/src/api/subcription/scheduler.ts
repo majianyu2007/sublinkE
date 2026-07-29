@@ -7,6 +7,8 @@ export interface SubScheduler {
   URL: string;
   CronExpr: string;
   Enabled: boolean;
+  TargetSubcriptionIDs: number[];
+  SuccessCount: number;
 }
 
 export interface SubSchedulerRequest {
@@ -15,6 +17,7 @@ export interface SubSchedulerRequest {
   url: string;
   cron_expr: string;
   enabled: boolean;
+  target_subcription_ids: number[];
 }
 
 // 获取订阅调度器列表
@@ -48,5 +51,12 @@ export function deleteSubScheduler(id: number) {
   return request({
     url: `/api/v1/sub_scheduler/delete/${id}`,
     method: 'delete'
+  });
+}
+
+export function syncSubScheduler(id: number) {
+  return request({
+    url: `/api/v1/sub_scheduler/sync/${id}`,
+    method: 'post'
   });
 }

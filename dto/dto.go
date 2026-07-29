@@ -22,9 +22,10 @@ type UserAccessKey struct {
 
 // SubSchedulerAddRequest 订阅调度添加请求体结构
 type SubSchedulerAddRequest struct {
-	ID       int    `json:"id"`
-	Name     string `json:"name" binding:"required"`
-	URL      string `json:"url" binding:"required,url"`
-	CronExpr string `json:"cron_expr" binding:"required"`
-	Enabled  bool   `json:"enabled"`
+	ID                   int    `json:"id"`
+	Name                 string `json:"name" binding:"required"`
+	URL                  string `json:"url" binding:"required,url"`
+	CronExpr             string `json:"cron_expr" binding:"required"`
+	Enabled              bool   `json:"enabled"`
+	TargetSubcriptionIDs []int  `json:"target_subcription_ids"`
 }

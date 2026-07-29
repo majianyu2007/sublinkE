@@ -32,13 +32,29 @@
 - [x] 支持插件扩展（实验性）
 - [ ] ...
 
+## 本 Fork 的增强
+
+本分支在上游 `sublinkE` 基础上继续增强了自动订阅同步、输出订阅组合和 Clash/Mihomo 配置生成：
+
+- **镜像订阅组**：自动订阅任务导入的节点由任务独立管理；更新时只替换该任务的镜像节点，保留订阅中的手动节点。
+- **一组多投**：一个自动订阅任务可以同时分发到多个输出订阅；输出订阅也可以直接选择完整镜像组，无需逐个勾选节点。
+- **安全同步**：下载失败、解析失败、空订阅或节点冲突时保留上一份可用数据；同步过程使用事务，避免输出处于半更新状态。
+- **立即同步**：任务列表提供“立即同步”，并对同一任务加锁，避免手动同步与 Cron 任务并发覆盖。
+- **HTTP/HTTPS 代理**：支持带认证、TLS、IPv4 和 IPv6 地址的 HTTP/HTTPS 代理节点，并正确生成 Clash、V2Ray 和 Surge 输出。
+- **SQLite 并发改进**：启用 WAL、外键约束和写入等待，减少定时同步期间的 `database is locked`。
+- **自定义 Clash/Mihomo 模板**：保留 AI、流媒体、社交、游戏平台、Microsoft、Apple、Vodafone Wi-Fi Calling、广告过滤等分流及 MRS 规则集。
+- **自动节点分组**：提供香港、台湾、日本、新加坡、美国、韩国、欧洲及其他地区的自动测速组，并提供“自建优质节点”和“自建自动优选”专属组。
+- **生产构建修复**：前端资源从 `webs/dist` 正确嵌入 Go 二进制，Docker 构建同步使用该目录。
+
+已有数据库会在启动时自动迁移旧的单目标自动订阅关系。升级前仍建议备份 `db/sublink.db`。
+
 # 项目特色
 
 - 高自由度与安全性，支持访问订阅记录及简易配置管理；
 - 支持多种客户端协议及格式，包括：
     - v2ray（base64 通用格式）
-    - clash（支持 ss, ssr, trojan, vmess, vless, hy, hy2, tuic, AnyTLS, Socks5）
-    - surge（支持 ss, trojan, vmess, hy2, tuic）
+    - clash（支持 ss, ssr, trojan, vmess, vless, hy, hy2, tuic, AnyTLS, Socks5, HTTP/HTTPS）
+    - surge（支持 ss, trojan, vmess, hy2, tuic, HTTP/HTTPS）
 - 新增 token 授权及订阅导入功能，增强安全性和便捷性。
 
 # 安装说明

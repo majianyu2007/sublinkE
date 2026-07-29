@@ -17,8 +17,8 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 
-# 把前端构建产物复制到 static 目录
-COPY --from=frontend-builder /frontend/webs/dist ./static
+# 把前端构建产物复制回前端目录，供 Go embed 打包
+COPY --from=frontend-builder /frontend/webs/dist ./webs/dist
 
 RUN go build -tags=prod -o sublinkE
 
@@ -35,7 +35,6 @@ RUN apt-get update && \
 RUN mkdir -p /app/db /app/logs /app/template /app/plugins && chmod 777 /app/db /app/logs /app/template /app/plugins
 
 COPY --from=backend-builder /app/sublinkE /app/sublinkE
-COPY --from=backend-builder /app/static /app/static
 
 
 EXPOSE 8000

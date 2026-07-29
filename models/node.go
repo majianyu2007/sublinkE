@@ -11,6 +11,7 @@ type Node struct {
 	DialerProxyName string
 	CreateDate      string
 	Source          string `gorm:"default:'manual'"`
+	SchedulerID     *int   `gorm:"index"`
 }
 
 // Add 添加节点

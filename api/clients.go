@@ -96,6 +96,12 @@ func GetClient(c *gin.Context) {
 	}
 
 }
+func isRemoteSubscriptionNode(node models.Node) bool {
+	link := strings.ToLower(strings.TrimSpace(node.Link))
+	isHTTP := strings.HasPrefix(link, "http://") || strings.HasPrefix(link, "https://")
+	return isHTTP && node.SchedulerID == nil
+}
+
 func GetV2ray(c *gin.Context) {
 	var sub models.Subcription
 	if SunName == "" {
@@ -125,7 +131,7 @@ func GetV2ray(c *gin.Context) {
 			baselist += strings.Join(links, "\n") + "\n"
 			continue
 		//如果是订阅转换
-		case strings.Contains(v.Link, "http://") || strings.Contains(v.Link, "https://"):
+		case isRemoteSubscriptionNode(v):
 			resp, err := http.Get(v.Link)
 			if err != nil {
 				log.Println(err)
@@ -176,7 +182,7 @@ func GetClash(c *gin.Context) {
 			}
 			continue
 		//如果是订阅转换
-		case strings.Contains(v.Link, "http://") || strings.Contains(v.Link, "https://"):
+		case isRemoteSubscriptionNode(v):
 			resp, err := http.Get(v.Link)
 			if err != nil {
 				log.Println(err)
@@ -243,7 +249,7 @@ func GetSurge(c *gin.Context) {
 			urls = append(urls, links...)
 			continue
 		//如果是订阅转换
-		case strings.Contains(v.Link, "http://") || strings.Contains(v.Link, "https://"):
+		case isRemoteSubscriptionNode(v):
 			resp, err := http.Get(v.Link)
 			if err != nil {
 				log.Println(err)

@@ -3,6 +3,8 @@ package models
 import (
 	"fmt"
 	"sublink/dto"
+
+	"gorm.io/gorm"
 )
 
 type Subcription struct {
@@ -13,6 +15,7 @@ type Subcription struct {
 	SubLogs       []SubLogs `gorm:"foreignKey:SubcriptionID;"`             // 一对多关系 约束父表被删除子表记录跟着删除
 	CreateDate    string
 	NodesWithSort []NodeWithSort `gorm:"-" json:"Nodes"`
+	SchedulerIDs  []int          `gorm:"-" json:"SchedulerIDs"`
 }
 
 type SubcriptionNode struct {
@@ -86,6 +89,15 @@ func (sub *Subcription) List() ([]Subcription, error) {
 			return nil, err
 		}
 		subs[i].NodesWithSort = nodesWithSort
+		var schedulerTargets []SubSchedulerTarget
+		if err := DB.Where("subcription_id = ?", subs[i].ID).
+			Order("sort ASC, scheduler_id ASC").Find(&schedulerTargets).Error; err != nil {
+			return nil, err
+		}
+		subs[i].SchedulerIDs = make([]int, 0, len(schedulerTargets))
+		for _, target := range schedulerTargets {
+			subs[i].SchedulerIDs = append(subs[i].SchedulerIDs, target.SchedulerID)
+		}
 
 		// 查询日志
 		err = DB.Model(&subs[i]).Association("SubLogs").Find(&subs[i].SubLogs)
@@ -97,6 +109,38 @@ func (sub *Subcription) List() ([]Subcription, error) {
 	return subs, nil
 }
 
+func (sub *Subcription) SaveComposition(create bool, schedulerIDs []int) error {
+	return DB.Transaction(func(tx *gorm.DB) error {
+		if create {
+			if err := tx.Omit("Nodes", "SubLogs").Create(sub).Error; err != nil {
+				return err
+			}
+		} else {
+			if err := tx.Model(&Subcription{}).Where("id = ?", sub.ID).Updates(map[string]interface{}{
+				"name":        sub.Name,
+				"config":      sub.Config,
+				"create_date": sub.CreateDate,
+			}).Error; err != nil {
+				return err
+			}
+		}
+
+		if err := tx.Where("subcription_id = ?", sub.ID).Delete(&SubcriptionNode{}).Error; err != nil {
+			return err
+		}
+		for index, node := range sub.Nodes {
+			if node.SchedulerID != nil {
+				return fmt.Errorf("scheduled nodes must be selected through scheduler groups")
+			}
+			link := SubcriptionNode{SubcriptionID: sub.ID, NodeID: node.ID, Sort: index + 1}
+			if err := tx.Create(&link).Error; err != nil {
+				return err
+			}
+		}
+		return replaceSubscriptionSchedulers(tx, sub.ID, schedulerIDs)
+	})
+}
+
 func (sub *Subcription) IPlogUpdate() error {
 	return DB.Model(sub).Association("SubLogs").Replace(&sub.SubLogs)
 }
@@ -105,6 +149,9 @@ func (sub *Subcription) IPlogUpdate() error {
 func (sub *Subcription) Del() error {
 	err := DB.Model(sub).Association("Nodes").Clear()
 	if err != nil {
+		return err
+	}
+	if err := DB.Where("subcription_id = ?", sub.ID).Delete(&SubSchedulerTarget{}).Error; err != nil {
 		return err
 	}
 	return DB.Delete(sub).Error

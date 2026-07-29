@@ -14,7 +14,7 @@ import (
 func EncodeSurge(urls []string, sqlconfig utils.SqlConfig) (string, error) {
 	var proxys, groups []string
 	for _, link := range urls {
-		Scheme := strings.Split(link, "://")[0]
+		Scheme := strings.ToLower(strings.Split(link, "://")[0])
 		switch {
 		case Scheme == "ss":
 			ss, err := DecodeSSURL(link)
@@ -34,6 +34,21 @@ func EncodeSurge(urls []string, sqlconfig utils.SqlConfig) (string, error) {
 				proxy["name"], proxy["server"], proxy["port"], proxy["cipher"], proxy["password"], proxy["udp"])
 			groups = append(groups, ss.Name)
 			proxys = append(proxys, ssproxy)
+		case Scheme == "http" || Scheme == "https":
+			httpProxy, err := DecodeHTTPProxyURL(link)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			proxyLine := fmt.Sprintf("%s = %s, %s, %d", httpProxy.Name, Scheme, httpProxy.Server, httpProxy.Port)
+			if httpProxy.Username != "" {
+				proxyLine += fmt.Sprintf(", username=%s, password=%s", httpProxy.Username, httpProxy.Password)
+			}
+			if Scheme == "https" {
+				proxyLine += fmt.Sprintf(", skip-cert-verify=%t", sqlconfig.Cert)
+			}
+			groups = append(groups, httpProxy.Name)
+			proxys = append(proxys, proxyLine)
 		case Scheme == "vmess":
 			vmess, err := DecodeVMESSURL(link)
 			if err != nil {

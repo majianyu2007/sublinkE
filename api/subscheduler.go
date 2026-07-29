@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"sublink/dto"
 	"sublink/models"
-	"sublink/node"
 	"sublink/services"
 
 	"github.com/gin-gonic/gin"
@@ -45,9 +44,9 @@ func SubSchedulerAdd(c *gin.Context) {
 		return
 	}
 
-	err = subS.Add()
+	err = subS.AddWithTargets(req.TargetSubcriptionIDs)
 	if err != nil {
-		c.JSON(400, gin.H{"msg": "添加失败，可能重复或其他错误"})
+		c.JSON(400, gin.H{"msg": "添加失败: " + err.Error()})
 		return
 	}
 
@@ -61,7 +60,7 @@ func SubSchedulerAdd(c *gin.Context) {
 
 	// 立即执行一次任务
 	if req.Enabled {
-		go node.LoadClashConfigFromURL(req.URL, req.Name)
+		go services.ExecuteSubscriptionTask(subS.ID, req.URL, req.Name)
 	}
 
 	c.JSON(200, gin.H{
@@ -117,6 +116,28 @@ func SubSchedulerGet(c *gin.Context) {
 	})
 }
 
+func SubSchedulerSync(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil || id <= 0 {
+		c.JSON(400, gin.H{"msg": "参数错误"})
+		return
+	}
+	count, err := services.SyncSubscriptionTask(id)
+	if errors.Is(err, services.ErrSubscriptionTaskRunning) {
+		c.JSON(409, gin.H{"msg": "该订阅正在同步中"})
+		return
+	}
+	if err != nil {
+		c.JSON(500, gin.H{"msg": "同步失败: " + err.Error()})
+		return
+	}
+	c.JSON(200, gin.H{
+		"code": "00000",
+		"msg":  "同步成功",
+		"data": gin.H{"success_count": count},
+	})
+}
+
 func SubSchedulerUpdate(c *gin.Context) {
 	var req dto.SubSchedulerAddRequest
 	err := c.BindJSON(&req)
@@ -152,7 +173,7 @@ func SubSchedulerUpdate(c *gin.Context) {
 	subS.ID = req.ID
 	subS.CronExpr = req.CronExpr
 	subS.Enabled = req.Enabled
-	err = subS.Update()
+	err = subS.UpdateWithTargets(req.TargetSubcriptionIDs)
 
 	if err != nil {
 		c.JSON(500, gin.H{"msg": "更新失败"})
@@ -162,6 +183,9 @@ func SubSchedulerUpdate(c *gin.Context) {
 	// 更新定时任务
 	scheduler := services.GetSchedulerManager()
 	_ = scheduler.UpdateJob(req.ID, req.CronExpr, req.Enabled, req.URL, req.Name)
+	if req.Enabled {
+		go services.ExecuteSubscriptionTask(req.ID, req.URL, req.Name)
+	}
 
 	c.JSON(200, gin.H{
 		"code": "00000",

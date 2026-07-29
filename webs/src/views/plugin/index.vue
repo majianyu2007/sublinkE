@@ -254,7 +254,8 @@ const reloadPlugins = async () => {
 };
 
 // 启用插件
-const handleEnable = async (plugin: PluginInfo) => {
+const handleEnable = async (value: Record<string, any>) => {
+  const plugin = value as PluginInfo;
   actionLoading.value = `${plugin.name}_enable`;
   try {
      await enablePluginApi(plugin.name);
@@ -273,7 +274,8 @@ const handleEnable = async (plugin: PluginInfo) => {
 };
 
 // 禁用插件
-const handleDisable = async (plugin: PluginInfo) => {
+const handleDisable = async (value: Record<string, any>) => {
+  const plugin = value as PluginInfo;
   actionLoading.value = `${plugin.name}_disable`;
   try {
       await disablePluginApi(plugin.name);
@@ -292,7 +294,8 @@ const handleDisable = async (plugin: PluginInfo) => {
 };
 
 // 打开配置对话框
-const openConfigDialog = async (plugin: PluginInfo) => {
+const openConfigDialog = async (value: Record<string, any>) => {
+  const plugin = value as PluginInfo;
   currentPlugin.value = { ...plugin };
   configDialogVisible.value = true;
   configLoaded.value = false;

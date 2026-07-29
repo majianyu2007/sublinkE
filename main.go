@@ -146,7 +146,7 @@ func Run(port int) {
 	// 设置静态资源路径
 	// 生产环境才启用内嵌静态文件服务
 	if StaticFiles != nil {
-		staticFiles, err := fs.Sub(StaticFiles, "static")
+		staticFiles, err := fs.Sub(StaticFiles, "webs/dist")
 		if err != nil {
 			log.Println(err)
 		} else {

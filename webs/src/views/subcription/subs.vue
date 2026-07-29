@@ -4,6 +4,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {getSubs,AddSub,DelSub,UpdateSub,SortSub} from "@/api/subcription/subs"
 import {getTemp} from "@/api/subcription/temp"
 import {getNodes} from "@/api/subcription/node"
+import {getSubSchedulers,type SubScheduler} from "@/api/subcription/scheduler"
 import QrcodeVue from 'qrcode.vue'
 import md5 from 'md5'
 interface Sub {
@@ -13,6 +14,7 @@ interface Sub {
   Config: Config;
   Nodes: Node[];
   SubLogs:SubLogs[];
+  SchedulerIDs: number[];
 }
 interface Node {
   ID: number;
@@ -20,6 +22,7 @@ interface Node {
   Link: string;
   CreateDate: string;
   Sort?: number; // 添加排序字段，可选
+  SchedulerID?: number;
 }
 interface Config {
   clash: string;
@@ -50,6 +53,9 @@ const dialogVisible = ref(false)
 const table = ref()
 const NodesList = ref<Node[]>([])
 const value1 = ref<string[]>([])
+const schedulerGroups = ref<SubScheduler[]>([])
+const selectedSchedulerIDs = ref<number[]>([])
+const manualNodesList = computed(() => NodesList.value.filter((node) => !node.SchedulerID))
 const checkList = ref<string[]>([]) // 配置列表
 const iplogsdialog = ref(false)
 const IplogsList = ref<SubLogs[]>([])
@@ -70,8 +76,9 @@ onMounted(() => {
   gettemps()
 })
 onMounted(async() => {
-  const {data} = await getNodes();
-  NodesList.value = data
+  const [{data: nodes}, {data: schedulers}] = await Promise.all([getNodes(), getSubSchedulers()])
+  NodesList.value = nodes
+  schedulerGroups.value = schedulers
 })
 
 
@@ -87,7 +94,8 @@ const addSubs = async ()=>{
     await AddSub({
       config: config,
       name: Subname.value.trim(),
-      nodes: value1.value.join(',')
+      nodes: value1.value.join(','),
+      scheduler_ids: selectedSchedulerIDs.value.join(','),
     })
     getsubs()
     ElMessage.success("添加成功");
@@ -96,7 +104,8 @@ const addSubs = async ()=>{
       config: config,
       name: Subname.value.trim(),
       nodes: value1.value.join(','),
-      oldname: oldSubname.value
+      oldname: oldSubname.value,
+      scheduler_ids: selectedSchedulerIDs.value.join(','),
     })
     getsubs()
     ElMessage.success("更新成功");
@@ -172,6 +181,7 @@ const handleAddSub = ()=>{
   Surge.value = './template/surge.conf'
   dialogVisible.value = true
   value1.value = []
+  selectedSchedulerIDs.value = []
 }
 const handleEdit = (row:any) => {
   for (let i = 0; i < tableData.value.length; i++) {
@@ -187,6 +197,7 @@ const handleEdit = (row:any) => {
       SubTitle.value = '编辑订阅'
       Subname.value = tableData.value[i].Name
       oldSubname.value = Subname.value
+      checkList.value = []
       if (config.udp)  {
         checkList.value.push('udp')
       }
@@ -196,7 +207,10 @@ const handleEdit = (row:any) => {
       Clash.value = config.clash
       Surge.value = config.surge
       dialogVisible.value = true
-      value1.value = tableData.value[i].Nodes.map((item) => item.Name)
+      value1.value = tableData.value[i].Nodes
+        .filter((item) => !item.SchedulerID)
+        .map((item) => item.Name)
+      selectedSchedulerIDs.value = tableData.value[i].SchedulerIDs || []
     }
   }
 }
@@ -590,7 +604,31 @@ const handleCancelSort = () => {
         </el-checkbox-group>
       </el-row>
       <div class="m-4">
+        <p>选择镜像订阅组</p>
+        <el-select
+          v-model="selectedSchedulerIDs"
+          multiple
+          collapse-tags
+          collapse-tags-tooltip
+          placeholder="选择后会自动包含整组节点，并持续跟随更新"
+          style="width: 100%"
+        >
+          <el-option
+            v-for="group in schedulerGroups"
+            :key="group.ID"
+            :label="`${group.Name}（${group.SuccessCount || 0} 个节点）`"
+            :value="group.ID"
+          />
+        </el-select>
+        <div style="font-size: 12px; color: #909399; margin-top: 4px;">
+          同一个镜像订阅组可以加入多个订阅，无需逐个选择节点。
+        </div>
+      </div>
+      <div class="m-4">
         <p>选择已有的节点列表</p>
+        <div style="font-size: 12px; color: #909399; margin-bottom: 4px;">
+          这里只显示手动节点；自动节点请通过上面的镜像订阅组选择。
+        </div>
         <el-select
           v-model="value1"
           multiple
@@ -598,7 +636,7 @@ const handleCancelSort = () => {
           style="width: 100%"
         >
           <el-option
-            v-for="item in NodesList"
+            v-for="item in manualNodesList"
             :key="item.Name"
             :label="item.Name"
             :value="item.Name"

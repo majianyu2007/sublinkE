@@ -2,7 +2,8 @@
 import { ref,onMounted,nextTick,computed,watch  } from 'vue'
 import { Search, Refresh } from '@element-plus/icons-vue'
 import {getNodes,AddNodes,DelNode,UpdateNode} from "@/api/subcription/node"
-import {getSubSchedulers,addSubScheduler,updateSubScheduler,deleteSubScheduler,type SubScheduler,type SubSchedulerRequest} from "@/api/subcription/scheduler"
+import {getSubSchedulers,addSubScheduler,updateSubScheduler,deleteSubScheduler,syncSubScheduler,type SubScheduler,type SubSchedulerRequest} from "@/api/subcription/scheduler"
+import {getSubs} from "@/api/subcription/subs"
 import { ElMessage, ElMessageBox } from 'element-plus'
 interface Node {
   ID: number;
@@ -10,6 +11,10 @@ interface Node {
   Link: string;
   DialerProxyName: string;
   CreateDate: string;
+}
+interface OutputSubscription {
+  ID: number;
+  Name: string;
 }
 const tableData = ref<Node[]>([])
 const loading = ref(false)
@@ -25,17 +30,20 @@ const radio1 = ref('1')
 
 // 订阅相关变量
 const subSchedulerData = ref<SubScheduler[]>([])
+const outputSubscriptions = ref<OutputSubscription[]>([])
 const subSchedulerDialogVisible = ref(false)
 const subSchedulerFormVisible = ref(false)
 const subSchedulerForm = ref<SubSchedulerRequest>({
   name: '',
   url: '',
   cron_expr: '',
-  enabled: true
+  enabled: true,
+  target_subcription_ids: [],
 })
 const subSchedulerFormTitle = ref('')
 const subSchedulerTable = ref()
 const subSchedulerSelection = ref<SubScheduler[]>([])
+const syncingSchedulerID = ref<number | null>(null)
 
 // Cron表达式验证状态
 const cronValidationStatus = ref<{
@@ -293,9 +301,22 @@ const getSubSchedulerList = async () => {
   }
 }
 
-const handleImportSubscription = () => {
+const getOutputSubscriptionList = async () => {
+  const response = await getSubs()
+  outputSubscriptions.value = response.data || []
+}
+
+const targetSubscriptionNames = (ids: number[]) => {
+  if (!ids?.length) return '不自动合并'
+  return ids
+    .map((id) => outputSubscriptions.value.find((sub) => sub.ID === id)?.Name)
+    .filter(Boolean)
+    .join('、')
+}
+
+const handleImportSubscription = async () => {
   subSchedulerDialogVisible.value = true
-  getSubSchedulerList()
+  await Promise.all([getSubSchedulerList(), getOutputSubscriptionList()])
 }
 
 const handleAddSubScheduler = () => {
@@ -304,24 +325,41 @@ const handleAddSubScheduler = () => {
     name: '',
     url: '',
     cron_expr: '',
-    enabled: true
+    enabled: true,
+    target_subcription_ids: [],
   }
   subSchedulerFormVisible.value = true
 }
 
-const handleEditSubScheduler = (row: SubScheduler) => {
+const handleEditSubScheduler = (row: Record<string, any>) => {
   subSchedulerFormTitle.value = '编辑订阅'
   subSchedulerForm.value = {
     id: row.ID,
     name: row.Name,
     url: row.URL,
     cron_expr: row.CronExpr,
-    enabled: row.Enabled
+    enabled: row.Enabled,
+    target_subcription_ids: row.TargetSubcriptionIDs || [],
   }
   subSchedulerFormVisible.value = true
 }
 
-const handleDeleteSubScheduler = (row: SubScheduler) => {
+const handleSyncSubScheduler = async (row: Record<string, any>) => {
+  syncingSchedulerID.value = row.ID
+  try {
+    const response = await syncSubScheduler(row.ID)
+    const count = response?.data?.success_count
+    ElMessage.success(count === undefined ? '同步成功' : `同步成功，共 ${count} 个节点`)
+    await Promise.all([getSubSchedulerList(), getnodes()])
+  } catch (error) {
+    console.error('立即同步失败:', error)
+    ElMessage.error('立即同步失败')
+  } finally {
+    syncingSchedulerID.value = null
+  }
+}
+
+const handleDeleteSubScheduler = (row: Record<string, any>) => {
   ElMessageBox.confirm(
     `确定要删除订阅 "${row.Name}" 吗？`,
     '确认删除',
@@ -733,6 +771,11 @@ const formatDateTime = (dateTimeString: string) => {
         </el-table-column>
         <el-table-column prop="URL" label="订阅地址" min-width="200" :show-overflow-tooltip="true" />
         <el-table-column prop="CronExpr" label="Cron表达式" min-width="120" />
+        <el-table-column prop="TargetSubcriptionIDs" label="分发到订阅" min-width="180">
+          <template #default="scope">
+            {{ targetSubscriptionNames(scope.row.TargetSubcriptionIDs) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="SuccessCount" label="节点数量" min-width="120" />
         <el-table-column prop="LastRunTime" label="上次运行" min-width="160">
           <template #default="scope">
@@ -757,8 +800,17 @@ const formatDateTime = (dateTimeString: string) => {
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right">
+        <el-table-column label="操作" width="250" fixed="right">
           <template #default="scope">
+            <el-button
+              link
+              type="success"
+              size="small"
+              :loading="syncingSchedulerID === scope.row.ID"
+              @click="handleSyncSubScheduler(scope.row)"
+            >
+              立即同步
+            </el-button>
             <el-button link type="primary" size="small" @click="handleEditSubScheduler(scope.row)">
               编辑
             </el-button>
@@ -840,6 +892,26 @@ const formatDateTime = (dateTimeString: string) => {
               <div>• 0 */2 * * * - 每2小时执行</div>
               <div>• 0 0 * * 1 - 每周一执行</div>
             </div>
+          </div>
+        </el-form-item>
+        <el-form-item label="分发到订阅">
+          <el-select
+            v-model="subSchedulerForm.target_subcription_ids"
+            multiple
+            collapse-tags
+            collapse-tags-tooltip
+            placeholder="可选择多个目标订阅"
+            style="width: 100%;"
+          >
+            <el-option
+              v-for="sub in outputSubscriptions"
+              :key="sub.ID"
+              :label="sub.Name"
+              :value="sub.ID"
+            />
+          </el-select>
+          <div style="font-size: 12px; color: #909399;">
+            镜像同步仅替换该任务导入的节点，保留目标订阅中的手动节点。
           </div>
         </el-form-item>
         <el-form-item label="启用状态">

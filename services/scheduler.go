@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"log"
 	"regexp"
 	"strings"
@@ -22,6 +23,8 @@ type SchedulerManager struct {
 // 全局定时任务管理器实例
 var globalScheduler *SchedulerManager
 var once sync.Once
+var schedulerRunLocks sync.Map
+var ErrSubscriptionTaskRunning = errors.New("subscription task is already running")
 
 // GetSchedulerManager 获取全局定时任务管理器实例（单例模式）
 func GetSchedulerManager() *SchedulerManager {
@@ -182,11 +185,40 @@ func (sm *SchedulerManager) UpdateJob(schedulerID int, cronExpr string, enabled 
 	return nil
 }
 
-// ExecuteSubscriptionTask 执行订阅任务的具体业务逻辑
-func ExecuteSubscriptionTask(id int, url string, subName string) {
+// SyncSubscriptionTask runs one scheduler immediately and reports completion to callers.
+func SyncSubscriptionTask(id int) (int, error) {
+	runLockValue, _ := schedulerRunLocks.LoadOrStore(id, &sync.Mutex{})
+	runLock := runLockValue.(*sync.Mutex)
+	if !runLock.TryLock() {
+		return 0, ErrSubscriptionTaskRunning
+	}
+	defer runLock.Unlock()
 
-	log.Printf("执行自动获取订阅任务 - ID: %d, Name: %s, URL: %s", id, subName, url)
-	node.LoadClashConfigFromURL(url, subName)
+	var scheduler models.SubScheduler
+	if err := scheduler.GetByID(id); err != nil {
+		return 0, err
+	}
+	count, err := node.LoadClashConfigFromURL(id, scheduler.URL, scheduler.Name)
+	if err != nil {
+		return 0, err
+	}
+	lastRun := time.Now()
+	nextRun := GetSchedulerManager().getNextRunTime(scheduler.CronExpr)
+	if err := scheduler.UpdateRunTime(&lastRun, nextRun); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+// ExecuteSubscriptionTask executes a scheduled task and records the result in logs.
+func ExecuteSubscriptionTask(id int, _ string, subName string) {
+	log.Printf("执行自动获取订阅任务 - ID: %d, Name: %s", id, subName)
+	count, err := SyncSubscriptionTask(id)
+	if err != nil {
+		log.Printf("自动订阅同步失败 - ID: %d, Name: %s, Error: %v", id, subName, err)
+		return
+	}
+	log.Printf("自动订阅同步成功 - ID: %d, Name: %s, Nodes: %d", id, subName, count)
 }
 
 // cleanCronExpression 清理Cron表达式中的多余空格

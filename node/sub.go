@@ -7,6 +7,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -20,30 +21,37 @@ type ClashConfig struct {
 	Proxies []Proxy `yaml:"proxies"`
 }
 
-func LoadClashConfigFromURL(url string, subName string) {
-	resp, err := http.Get(url)
+func LoadClashConfigFromURL(schedulerID int, rawURL, subName string) (int, error) {
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Get(rawURL)
 	if err != nil {
-		log.Printf("URL %s，获取Clash配置失败:  %v", url, err)
-		return
+		return 0, fmt.Errorf("fetch Clash subscription: %w", err)
 	}
 	defer resp.Body.Close()
-	data, err := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("fetch Clash subscription: unexpected HTTP status %s", resp.Status)
+	}
+	const maxSubscriptionBytes = 32 << 20
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxSubscriptionBytes+1))
 	if err != nil {
-		log.Printf("URL %s，读取Clash配置失败:  %v", url, err)
-		return
+		return 0, fmt.Errorf("read Clash subscription: %w", err)
+	}
+	if len(data) > maxSubscriptionBytes {
+		return 0, fmt.Errorf("Clash subscription exceeds %d bytes", maxSubscriptionBytes)
 	}
 	var config ClashConfig
-	err = yaml.Unmarshal(data, &config)
-	if err != nil {
-		log.Printf("URL %s，解析Clash配置失败:  %v", url, err)
-		return
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return 0, fmt.Errorf("parse Clash subscription: %w", err)
 	}
-	scheduleClashToNodeLinks(config.Proxies, subName)
+	if len(config.Proxies) == 0 {
+		return 0, fmt.Errorf("refusing to sync an empty Clash subscription")
+	}
+	return scheduleClashToNodeLinks(config.Proxies, schedulerID, subName)
 }
 
-func scheduleClashToNodeLinks(proxys []Proxy, subName string) {
+func scheduleClashToNodeLinks(proxys []Proxy, schedulerID int, subName string) (int, error) {
 	successCount := 0
-	//_ = models.DeleteAutoSubscriptionNodes(subName)
+	nodes := make([]models.Node, 0, len(proxys))
 
 	for _, proxy := range proxys {
 		var node models.Node
@@ -375,6 +383,25 @@ func scheduleClashToNodeLinks(proxys []Proxy, subName string) {
 
 			link = fmt.Sprintf("anytls://%s@%s:%d?%s#%s", password, server, port, query.Encode(), name)
 			successCount++
+		case "http":
+			scheme := "http"
+			if proxy.Tls {
+				scheme = "https"
+			}
+			httpURL := &url.URL{
+				Scheme:   scheme,
+				Host:     net.JoinHostPort(strings.Trim(proxy.Server, "[]"), strconv.Itoa(proxy.Port)),
+				Fragment: proxy.Name,
+			}
+			if proxy.Username != "" {
+				if proxy.Password != "" {
+					httpURL.User = url.UserPassword(proxy.Username, proxy.Password)
+				} else {
+					httpURL.User = url.User(proxy.Username)
+				}
+			}
+			link = httpURL.String()
+			successCount++
 		case "socks5":
 			// socks5://username:password@server:port#name
 			username := proxy.Username
@@ -389,26 +416,25 @@ func scheduleClashToNodeLinks(proxys []Proxy, subName string) {
 			}
 			successCount++
 
+		default:
+			log.Printf("跳过不支持的订阅节点协议: type=%q name=%q", proxy.Type, proxy.Name)
+			continue
+		}
+		if link == "" {
+			log.Printf("跳过空链接订阅节点: type=%q name=%q", proxy.Type, proxy.Name)
+			continue
 		}
 		node.Link = link
 		node.Name = proxy.Name
 		node.Source = "sublinkE"
 		node.CreateDate = time.Now().Format("2006-01-02 15:04:05")
-		// 插入或更新节点，避免设置好的订阅节点丢失
-		_ = node.UpsertNode()
+		nodes = append(nodes, node)
 	}
-	subS := models.SubScheduler{
-		Name: subName,
+	if len(nodes) == 0 {
+		return 0, fmt.Errorf("subscription contains no supported nodes")
 	}
-	err := subS.Find()
-	if err != nil {
-		log.Printf("获取订阅连接 %s 失败:  %v", subName, err)
-		return
+	if err := models.SyncScheduledNodes(schedulerID, subName, nodes); err != nil {
+		return 0, err
 	}
-	subS.SuccessCount = successCount
-	err1 := subS.Update()
-	if err1 != nil {
-		return
-	}
-
+	return successCount, nil
 }

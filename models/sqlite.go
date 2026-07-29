@@ -20,7 +20,7 @@ func InitSqlite() {
 		}
 	}
 	// 连接数据库
-	db, err := gorm.Open(sqlite.Open("./db/sublink.db"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("./db/sublink.db?_pragma=journal_mode(WAL)&_pragma=busy_timeout(10000)"), &gorm.Config{})
 	if err != nil {
 		log.Println("连接数据库失败")
 	}
@@ -30,9 +30,12 @@ func InitSqlite() {
 		log.Println("数据库已经初始化，无需重复初始化")
 		return
 	}
-	err = db.AutoMigrate(&User{}, &Subcription{}, &Node{}, &SubLogs{}, &AccessKey{}, &SubScheduler{}, &SubcriptionNode{}, &Plugin{})
+	err = db.AutoMigrate(&User{}, &Subcription{}, &Node{}, &SubLogs{}, &AccessKey{}, &SubScheduler{}, &SubSchedulerTarget{}, &SubcriptionNode{}, &Plugin{})
 	if err != nil {
 		log.Println("数据表迁移失败")
+	}
+	if err := migrateLegacySchedulerTargets(db); err != nil {
+		log.Println("旧版镜像目标迁移失败")
 	}
 	// 初始化用户数据
 	err = db.First(&User{}).Error

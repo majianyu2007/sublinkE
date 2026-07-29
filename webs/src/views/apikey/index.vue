@@ -258,7 +258,8 @@ const handleCreateAPIKey = async () => {
 };
 
 // 删除API密钥
-const handleDelete = (row: LocalAPIKey) => {
+const handleDelete = (value: Record<string, any>) => {
+  const row = value as LocalAPIKey;
   ElMessageBox.confirm(
     t('apikey.deleteConfirmMessage'),
     t('apikey.deleteConfirmTitle'),
@@ -296,7 +297,8 @@ const handleSearch = () => {
 };
 
 // 获取过期标签类型
-const getExpirationTagType = (row: LocalAPIKey) => {
+const getExpirationTagType = (value: Record<string, any>) => {
+  const row = value as LocalAPIKey;
   if (!row.expiredAt) return 'success'; // 永不过期
   
   const expireDate = new Date(row.expiredAt);

@@ -8,10 +8,7 @@ import (
 	"io/fs"
 )
 
-//go:embed static/js/*
-//go:embed static/css/*
-//go:embed static/img/*
-//go:embed static/*
+//go:embed all:webs/dist
 var embeddedFiles embed.FS
 
 var StaticFiles fs.FS = embeddedFiles

@@ -380,6 +380,23 @@ func EncodeClash(urls []Urls, sqlconfig utils.SqlConfig) ([]byte, error) {
 			}
 
 			proxys = append(proxys, anyTLSProxy)
+		case Scheme == "http" || Scheme == "https":
+			httpProxy, err := DecodeHTTPProxyURL(link.Url)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			proxys = append(proxys, Proxy{
+				Name:             httpProxy.Name,
+				Type:             "http",
+				Server:           httpProxy.Server,
+				Port:             httpProxy.Port,
+				Username:         httpProxy.Username,
+				Password:         httpProxy.Password,
+				Tls:              httpProxy.TLS,
+				Skip_cert_verify: sqlconfig.Cert,
+				Dialer_proxy:     link.DialerProxyName,
+			})
 		case Scheme == "socks5":
 			socks5, err := DecodeSocks5URL(link.Url)
 			if err != nil {
@@ -460,6 +477,15 @@ func DecodeClash(proxys []Proxy, yamlfile string) ([]byte, error) {
 		// 如果 proxyGroup["proxies"] 是 nil，初始化它为一个空的切片
 		if proxyGroup["proxies"] == nil {
 			proxyGroup["proxies"] = []interface{}{}
+		}
+		// The presence of a Mihomo include field opts the template into managing
+		// this group's membership. A true value includes nodes dynamically; a
+		// false value keeps only the template's explicit groups and policies.
+		_, managesAll := proxyGroup["include-all"]
+		_, managesProxies := proxyGroup["include-all-proxies"]
+		if managesAll || managesProxies {
+			proxyGroups[i] = proxyGroup
+			continue
 		}
 		// 如果为链式代理的话则不插入返回
 		// log.Print("代理类型为:", proxyGroup["type"])

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 	"sublink/dto"
@@ -44,41 +45,60 @@ func SubGet(c *gin.Context) {
 	})
 }
 
+func parseIDList(value string) ([]int, error) {
+	if strings.TrimSpace(value) == "" {
+		return nil, nil
+	}
+	parts := strings.Split(value, ",")
+	ids := make([]int, 0, len(parts))
+	for _, part := range parts {
+		id, err := strconv.Atoi(strings.TrimSpace(part))
+		if err != nil || id <= 0 {
+			return nil, errors.New("invalid ID list")
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
 // 添加节点
 func SubAdd(c *gin.Context) {
 	var sub models.Subcription
 	name := c.PostForm("name")
 	config := c.PostForm("config")
 	nodes := c.PostForm("nodes")
-	if name == "" || nodes == "" {
+	schedulerIDs, err := parseIDList(c.PostForm("scheduler_ids"))
+	if err != nil {
+		c.JSON(400, gin.H{"msg": "镜像订阅参数错误"})
+		return
+	}
+	if name == "" || (nodes == "" && len(schedulerIDs) == 0) {
 		c.JSON(400, gin.H{
-			"msg": "订阅名称 or 节点不能为空",
+			"msg": "订阅名称不能为空，且节点或镜像订阅至少选择一项",
 		})
 		return
 	}
 	sub.Nodes = []models.Node{}
-	for _, v := range strings.Split(nodes, ",") {
-		var node models.Node
-		node.Name = v
-		err := node.Find()
-		if err != nil {
-			continue
+	if nodes != "" {
+		for _, v := range strings.Split(nodes, ",") {
+			var node models.Node
+			node.Name = v
+			if err := node.Find(); err != nil || node.SchedulerID != nil {
+				continue
+			}
+			sub.Nodes = append(sub.Nodes, node)
 		}
-		sub.Nodes = append(sub.Nodes, node)
+	}
+	if len(sub.Nodes) == 0 && len(schedulerIDs) == 0 {
+		c.JSON(400, gin.H{"msg": "没有可用的手动节点或镜像订阅"})
+		return
 	}
 
 	sub.Config = config
 	sub.Name = name
 	sub.CreateDate = time.Now().Format("2006-01-02 15:04:05")
 
-	err := sub.Add()
-	if err != nil {
-		c.JSON(400, gin.H{
-			"msg": "添加失败",
-		})
-		return
-	}
-	err = sub.AddNode() //创建多对多关系
+	err = sub.SaveComposition(true, schedulerIDs)
 	if err != nil {
 		c.JSON(400, gin.H{
 			"msg": err.Error(),
@@ -98,15 +118,20 @@ func SubUpdate(c *gin.Context) {
 	oldname := c.PostForm("oldname")
 	config := c.PostForm("config")
 	nodes := c.PostForm("nodes")
-	if name == "" || nodes == "" {
+	schedulerIDs, err := parseIDList(c.PostForm("scheduler_ids"))
+	if err != nil {
+		c.JSON(400, gin.H{"msg": "镜像订阅参数错误"})
+		return
+	}
+	if name == "" || (nodes == "" && len(schedulerIDs) == 0) {
 		c.JSON(400, gin.H{
-			"msg": "订阅名称 or 节点不能为空",
+			"msg": "订阅名称不能为空，且节点或镜像订阅至少选择一项",
 		})
 		return
 	}
 	// 查找旧节点
 	sub.Name = oldname
-	err := sub.Find()
+	err = sub.Find()
 	if err != nil {
 		c.JSON(400, gin.H{
 			"msg": err.Error(),
@@ -118,25 +143,22 @@ func SubUpdate(c *gin.Context) {
 	sub.Name = name
 	sub.CreateDate = time.Now().Format("2006-01-02 15:04:05")
 	sub.Nodes = []models.Node{}
-	for _, v := range strings.Split(nodes, ",") {
-		var node models.Node
-		node.Name = v
-		err := node.Find()
-		if err != nil {
-			continue
+	if nodes != "" {
+		for _, v := range strings.Split(nodes, ",") {
+			var node models.Node
+			node.Name = v
+			if err := node.Find(); err != nil || node.SchedulerID != nil {
+				continue
+			}
+			sub.Nodes = append(sub.Nodes, node)
 		}
-		sub.Nodes = append(sub.Nodes, node)
 	}
-
-	err = sub.Update()
-	if err != nil {
-		c.JSON(400, gin.H{
-			"msg": "更新失败",
-		})
+	if len(sub.Nodes) == 0 && len(schedulerIDs) == 0 {
+		c.JSON(400, gin.H{"msg": "没有可用的手动节点或镜像订阅"})
 		return
 	}
 
-	err = sub.UpdateNodes() //更新多对多关系
+	err = sub.SaveComposition(false, schedulerIDs)
 	if err != nil {
 		c.JSON(400, gin.H{
 			"msg": err.Error(),
