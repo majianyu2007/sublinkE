@@ -48,13 +48,15 @@ func TestScheduleClashToNodeLinksImportsHTTPAndSkipsUnsupported(t *testing.T) {
 
 	count, err := scheduleClashToNodeLinks([]Proxy{
 		{Name: "http", Type: "http", Server: "2001:db8::1", Port: 8080, Username: "user", Password: "p@ss", Tls: true},
+		{Name: "hy2", Type: "hysteria2", Server: "hy2.example", Port: 8443, Password: "https://github.com/path#token"},
 		{Name: "wireguard", Type: "wireguard", Server: "wg.example", Port: 51820},
+		{Name: "invalid-hy2", Type: "hysteria2", Server: "placeholder.invalid"},
 	}, scheduler.ID, scheduler.Name)
 	if err != nil {
 		t.Fatalf("import: %v", err)
 	}
-	if count != 1 {
-		t.Fatalf("count = %d, want 1 supported node", count)
+	if count != 2 {
+		t.Fatalf("count = %d, want 2 supported nodes", count)
 	}
 
 	var imported models.Node
@@ -75,6 +77,18 @@ func TestScheduleClashToNodeLinksImportsHTTPAndSkipsUnsupported(t *testing.T) {
 	}
 	if linkCount != 1 {
 		t.Fatalf("target subscription links = %d, want 1", linkCount)
+	}
+
+	var importedHY2 models.Node
+	if err := db.Where("scheduler_id = ? AND name = ?", scheduler.ID, "Feed_hy2").First(&importedHY2).Error; err != nil {
+		t.Fatal(err)
+	}
+	hy2, err := DecodeHY2URL(importedHY2.Link)
+	if err != nil {
+		t.Fatalf("decode imported Hysteria2 link: %v", err)
+	}
+	if hy2.Host != "hy2.example" || hy2.Port != 8443 || hy2.Password != "https://github.com/path#token" {
+		t.Fatalf("unexpected imported Hysteria2 proxy: %+v", hy2)
 	}
 }
 

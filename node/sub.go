@@ -63,6 +63,10 @@ func scheduleClashToNodeLinks(proxys []Proxy, schedulerID int, subName string) (
 		var node models.Node
 		var link string
 		proxy.Name = subName + "_" + strings.TrimSpace(proxy.Name) // 某些机场的节点名称可能包含空格
+		proxy.Server = strings.TrimSpace(proxy.Server)
+		if proxy.Server == "" || proxy.Port <= 0 || proxy.Port > 65535 {
+			continue
+		}
 		proxy.Server = utils.WrapIPv6Host(proxy.Server)
 		switch strings.ToLower(proxy.Type) {
 		case "ss":
@@ -342,7 +346,14 @@ func scheduleClashToNodeLinks(proxys []Proxy, schedulerID int, subName string) (
 			if len(proxy.Alpn) > 0 {
 				query.Set("alpn", strings.Join(proxy.Alpn, ","))
 			}
-			link = fmt.Sprintf("hysteria2://%s@%s:%d?%s#%s", auth, server, port, query.Encode(), name)
+			subscriptionURL := url.URL{
+				Scheme:   "hysteria2",
+				User:     url.User(auth),
+				Host:     net.JoinHostPort(utils.UnwrapIPv6Host(server), strconv.Itoa(port)),
+				RawQuery: query.Encode(),
+				Fragment: name,
+			}
+			link = subscriptionURL.String()
 			successCount++
 		case "tuic":
 			// tuic://uuid:password@server:port?sni=sni&congestion_control=congestion_control&alpn=alpn#name
